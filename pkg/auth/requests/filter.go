@@ -16,11 +16,10 @@ import (
 	k8sUser "k8s.io/apiserver/pkg/authentication/user"
 )
 
-func NewAuthenticationFilter(ctx context.Context, managementContext *config.ScaledContext, next http.Handler, sar sar.SubjectAccessReview) (http.Handler, error) {
+func NewAuthenticationFilter(ctx context.Context, auth Authenticator, managementContext *config.ScaledContext, next http.Handler, sar sar.SubjectAccessReview) (http.Handler, error) {
 	if managementContext == nil {
 		return nil, fmt.Errorf("Failed to build NewAuthenticationFilter, nil ManagementContext")
 	}
-	auth := NewAuthenticator(ctx, managementContext)
 	return &authHeaderHandler{
 		auth:              auth,
 		next:              next,

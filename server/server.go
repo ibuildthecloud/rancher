@@ -14,6 +14,7 @@ import (
 	"github.com/rancher/rancher/pkg/auth/requests"
 	"github.com/rancher/rancher/pkg/auth/requests/sar"
 	"github.com/rancher/rancher/pkg/auth/tokens"
+	webhook2 "github.com/rancher/rancher/pkg/auth/webhook"
 	"github.com/rancher/rancher/pkg/clustermanager"
 	rancherdialer "github.com/rancher/rancher/pkg/dialer"
 	"github.com/rancher/rancher/pkg/httpproxy"
@@ -53,9 +54,13 @@ func Start(ctx context.Context, httpPort, httpsPort int, localClusterEnabled boo
 
 	rawAuthedAPIs := newAuthed(tokenAPI, managementAPI, k8sProxy, scaledContext)
 
-	sar := sar.NewSubjectAccessReview(clusterManager)
+	auth := requests.NewAuthenticator(ctx, scaledContext)
+	tokenReview := &webhook2.TokenReviewer{
+		Authenticator: auth,
+	}
 
-	authedHandler, err := requests.NewAuthenticationFilter(ctx, scaledContext, rawAuthedAPIs, sar)
+	sar := sar.NewSubjectAccessReview(clusterManager)
+	authedHandler, err := requests.NewAuthenticationFilter(ctx, auth, scaledContext, rawAuthedAPIs, sar)
 	if err != nil {
 		return err
 	}
@@ -81,6 +86,7 @@ func Start(ctx context.Context, httpPort, httpsPort int, localClusterEnabled boo
 	root.Handle("/v3/settings/first-login", rawAuthedAPIs).Methods(http.MethodGet)
 	root.Handle("/v3/settings/ui-pl", rawAuthedAPIs).Methods(http.MethodGet)
 	root.PathPrefix("/v3").Handler(chainGzip.Handler(auditHandler))
+	root.Handle("/v3/tokenreview", tokenReview).Methods(http.MethodPost)
 	root.PathPrefix("/hooks").Handler(webhookHandler)
 	root.PathPrefix("/k8s/clusters/").Handler(auditHandler)
 	root.PathPrefix("/meta").Handler(auditHandler)
