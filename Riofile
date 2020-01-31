@@ -1,0 +1,4 @@
+services:
+  rancher:
+    ports:
+    - 80

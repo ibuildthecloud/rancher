@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/rancher/norman/pkg/debug"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
@@ -41,7 +42,11 @@ func main() {
 	logrus.SetOutput(colorable.NewColorableStdout())
 	logserver.StartServerWithDefaults()
 	if os.Getenv("CATTLE_DEBUG") == "true" || os.Getenv("RANCHER_DEBUG") == "true" {
-		logrus.SetLevel(logrus.DebugLevel)
+		dc := debug.Config{
+			Debug:      true,
+			DebugLevel: 7,
+		}
+		dc.MustSetupDebug()
 	}
 
 	var err error
@@ -267,7 +272,12 @@ func run() error {
 		}
 
 		if isCluster() {
-			err = cluster.RunControllers()
+			ns, err := cluster.Namespace()
+			if err != nil {
+				logrus.Fatal(err)
+			}
+
+			err = cluster.RunControllers(ns, token, server)
 			if err != nil {
 				logrus.Fatal(err)
 			}
