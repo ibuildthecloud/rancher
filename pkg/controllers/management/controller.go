@@ -27,6 +27,7 @@ import (
 	"github.com/rancher/rancher/pkg/controllers/management/podsecuritypolicy"
 	"github.com/rancher/rancher/pkg/controllers/management/usercontrollers"
 	"github.com/rancher/types/config"
+	"github.com/sirupsen/logrus"
 )
 
 func Register(ctx context.Context, management *config.ManagementContext, manager *clustermanager.Manager) {
@@ -56,6 +57,10 @@ func Register(ctx context.Context, management *config.ManagementContext, manager
 	multiclusterapp.Register(ctx, management, manager)
 	clustertemplate.Register(ctx, management)
 	nodetemplate.Register(ctx, management)
+
+	if err := wranglerControllers(ctx, management); err != nil {
+		logrus.Fatalf("failed to start wranger controllers: %v", err)
+	}
 
 	// Register last
 	auth.RegisterLate(ctx, management)
