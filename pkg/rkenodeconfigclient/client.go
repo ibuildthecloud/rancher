@@ -14,6 +14,10 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+const (
+	RevisionHeader = "X-RKE-NodePlan-Version"
+)
+
 var (
 	client = &http.Client{
 		Timeout: 300 * time.Second,
@@ -21,6 +25,7 @@ var (
 
 	nodeNotFoundRegexp    = regexp.MustCompile(`^node\.management\.cattle\.io.*not found$`)
 	clusterNotFoundRegexp = regexp.MustCompile(`^cluster.*not found$`)
+	ErrNoUpdate           = errors.New("no new node plan available")
 )
 
 type ErrNodeOrClusterNotFound struct {
@@ -48,7 +53,9 @@ func ConfigClient(ctx context.Context, url string, header http.Header, writeCert
 	nodeOrClusterNotFoundRetryLimit := 3
 	for {
 		nc, err := getConfig(client, url, header)
-		if err != nil {
+		if err == ErrNoUpdate {
+			return nil
+		} else if err != nil {
 			if _, ok := err.(*ErrNodeOrClusterNotFound); ok {
 				if nodeOrClusterNotFoundRetryLimit < 1 {
 					// return the error if the node cannot connect to server or remove from a cluster
@@ -65,7 +72,10 @@ func ConfigClient(ctx context.Context, url string, header http.Header, writeCert
 
 		if nc != nil {
 			logrus.Debugf("Get agent config: %#v", nc)
-			return rkeworker.ExecutePlan(ctx, nc, writeCertOnly)
+			if err := rkeworker.ExecutePlan(ctx, nc, writeCertOnly); err != nil {
+				return err
+			}
+			header.Set(RevisionHeader, nc.Revision)
 		}
 
 		logrus.Infof("Waiting for node to register. Either cluster is not ready for registering or etcd and controlplane node have to be registered first")
@@ -91,6 +101,10 @@ func getConfig(client *http.Client, url string, header http.Header) (*rkeworker.
 
 	if resp.StatusCode == http.StatusServiceUnavailable {
 		return nil, nil
+	}
+
+	if resp.StatusCode == http.StatusNoContent {
+		return nil, ErrNoUpdate
 	}
 
 	if resp.StatusCode == http.StatusNotFound {

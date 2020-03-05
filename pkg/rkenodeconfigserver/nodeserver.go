@@ -14,6 +14,7 @@ import (
 	kd "github.com/rancher/rancher/pkg/controllers/management/kontainerdrivermetadata"
 	"github.com/rancher/rancher/pkg/image"
 	"github.com/rancher/rancher/pkg/librke"
+	"github.com/rancher/rancher/pkg/rkenodeconfigclient"
 	"github.com/rancher/rancher/pkg/rkeworker"
 	"github.com/rancher/rancher/pkg/settings"
 	"github.com/rancher/rancher/pkg/systemaccount"
@@ -90,6 +91,11 @@ func (n *RKENodeConfigServer) ServeHTTP(rw http.ResponseWriter, req *http.Reques
 		return
 	}
 
+	if req.Header.Get(rkenodeconfigclient.RevisionHeader) == client.Cluster.ResourceVersion {
+		rw.WriteHeader(http.StatusNoContent)
+		return
+	}
+
 	var nodeConfig *rkeworker.NodeConfig
 	if isNonWorkerOnly(client.Node.Status.NodeConfig.Role) {
 		nodeConfig, err = n.nonWorkerConfig(req.Context(), client.Cluster, client.Node)
@@ -151,6 +157,7 @@ func (n *RKENodeConfigServer) nonWorkerConfig(ctx context.Context, cluster *v3.C
 
 	nc := &rkeworker.NodeConfig{
 		ClusterName: cluster.Name,
+		Revision:    cluster.ResourceVersion,
 	}
 	token, err := n.systemAccountManager.GetOrCreateSystemClusterToken(cluster.Name)
 	if err != nil {
@@ -203,6 +210,7 @@ func (n *RKENodeConfigServer) nodeConfig(ctx context.Context, cluster *v3.Cluste
 	}
 
 	nc := &rkeworker.NodeConfig{
+		Revision:    cluster.ResourceVersion,
 		ClusterName: cluster.Name,
 	}
 	token, err := n.systemAccountManager.GetOrCreateSystemClusterToken(cluster.Name)

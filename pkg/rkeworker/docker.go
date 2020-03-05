@@ -32,6 +32,7 @@ type NodeConfig struct {
 	Certs       string                `json:"certs"`
 	Processes   map[string]v3.Process `json:"processes"`
 	Files       []v3.File             `json:"files"`
+	Revision    string                `json:"revision"`
 }
 
 func runProcess(ctx context.Context, name string, p v3.Process, start, forceRestart bool) error {
