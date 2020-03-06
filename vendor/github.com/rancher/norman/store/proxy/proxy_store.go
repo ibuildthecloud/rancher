@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/rancher/norman/httperror"
-	"github.com/rancher/norman/objectclient/dynamic"
 	"github.com/rancher/norman/pkg/broadcast"
 	"github.com/rancher/norman/restwatch"
 	"github.com/rancher/norman/types"
@@ -41,48 +40,7 @@ var (
 
 type ClientGetter interface {
 	UnversionedClient(apiContext *types.APIContext, context types.StorageContext) (rest.Interface, error)
-	APIExtClient(apiContext *types.APIContext, context types.StorageContext) (clientset.Interface, error)
-}
-
-type simpleClientGetter struct {
-	restConfig   rest.Config
-	client       rest.Interface
-	apiExtClient clientset.Interface
-}
-
-func NewClientGetterFromConfig(config rest.Config) (ClientGetter, error) {
-	dynamicConfig := config
-	if dynamicConfig.NegotiatedSerializer == nil {
-		dynamicConfig.NegotiatedSerializer = dynamic.NegotiatedSerializer
-	}
-
-	unversionedClient, err := rest.UnversionedRESTClientFor(&dynamicConfig)
-	if err != nil {
-		return nil, err
-	}
-
-	apiExtClient, err := clientset.NewForConfig(&dynamicConfig)
-	if err != nil {
-		return nil, err
-	}
-
-	return &simpleClientGetter{
-		restConfig:   config,
-		client:       unversionedClient,
-		apiExtClient: apiExtClient,
-	}, nil
-}
-
-func (s *simpleClientGetter) Config(apiContext *types.APIContext, context types.StorageContext) (rest.Config, error) {
-	return s.restConfig, nil
-}
-
-func (s *simpleClientGetter) UnversionedClient(apiContext *types.APIContext, context types.StorageContext) (rest.Interface, error) {
-	return s.client, nil
-}
-
-func (s *simpleClientGetter) APIExtClient(apiContext *types.APIContext, context types.StorageContext) (clientset.Interface, error) {
-	return s.apiExtClient, nil
+	APIExtClient() clientset.Interface
 }
 
 type Store struct {

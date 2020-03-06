@@ -79,6 +79,7 @@ func (s *Schemas) newSchemaFromType(version *APIVersion, t reflect.Type, typeNam
 		Version:           *version,
 		CodeName:          t.Name(),
 		PkgName:           t.PkgPath(),
+		ReflectType:       t,
 		ResourceFields:    map[string]Field{},
 		ResourceActions:   map[string]Action{},
 		CollectionActions: map[string]Action{},

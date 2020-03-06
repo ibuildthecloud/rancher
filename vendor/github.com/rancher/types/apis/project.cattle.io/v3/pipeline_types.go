@@ -66,7 +66,7 @@ type SourceCodeProviderConfig struct {
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
 	ProjectName string `json:"projectName" norman:"required,type=reference[project]"`
-	Type        string `json:"type" norman:"noupdate,options=github|gitlab|bitbucketcloud|bitbucketserver"`
+	Type        string `json:"type" norman:"noupdate"`
 	Enabled     bool   `json:"enabled,omitempty"`
 }
 

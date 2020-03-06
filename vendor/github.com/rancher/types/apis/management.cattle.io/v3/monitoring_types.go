@@ -139,7 +139,7 @@ type QueryClusterGraphOutput struct {
 
 type QueryClusterGraph struct {
 	GraphName string        `json:"graphID" norman:"type=reference[clusterMonitorGraph]"`
-	Series    []*TimeSeries `json:"series" norman:"type=array[reference[timeSeries]]"`
+	Series    []*TimeSeries `json:"series" wrangler:"" norman:"type=array[reference[timeSeries]]"`
 }
 
 type QueryProjectGraphOutput struct {
@@ -149,7 +149,7 @@ type QueryProjectGraphOutput struct {
 
 type QueryProjectGraph struct {
 	GraphName string        `json:"graphID" norman:"type=reference[projectMonitorGraph]"`
-	Series    []*TimeSeries `json:"series" norman:"type=array[reference[timeSeries]]"`
+	Series    []*TimeSeries `json:"series" wrangler:"" norman:"type=array[reference[timeSeries]]"`
 }
 
 type QueryClusterMetricInput struct {
@@ -182,7 +182,7 @@ type CommonQueryMetricInput struct {
 
 type QueryMetricOutput struct {
 	Type   string        `json:"type,omitempty"`
-	Series []*TimeSeries `json:"series" norman:"type=array[reference[timeSeries]]"`
+	Series []*TimeSeries `json:"series" wrangler:"" norman:"type=array[reference[timeSeries]]"`
 }
 
 type TimeSeries struct {

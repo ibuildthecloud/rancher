@@ -80,7 +80,10 @@ func Setup(ctx context.Context, apiContext *config.ScaledContext, clusterManager
 	// Here we setup all types that will be stored in the Management cluster
 	schemas := apiContext.Schemas
 
-	factory := &crd.Factory{ClientGetter: apiContext.ClientGetter}
+	factory, err := crd.NewFactoryFromClientGetter(apiContext.ClientGetter)
+	if err != nil {
+		return err
+	}
 
 	factory.BatchCreateCRDs(ctx, config.ManagementStorageContext, schemas, &managementschema.Version,
 		client.AuthConfigType,
@@ -156,7 +159,9 @@ func Setup(ctx context.Context, apiContext *config.ScaledContext, clusterManager
 		projectclient.SourceCodeRepositoryType,
 	)
 
-	factory.BatchWait()
+	if err := factory.BatchWait(); err != nil {
+		return err
+	}
 
 	Clusters(schemas, apiContext, clusterManager, k8sProxy)
 	ClusterRoleTemplateBinding(schemas, apiContext)

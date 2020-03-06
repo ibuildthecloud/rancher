@@ -415,8 +415,8 @@ func (m *Manager) UnversionedClient(apiContext *types.APIContext, storageContext
 	return record.cluster.UnversionedClient, nil
 }
 
-func (m *Manager) APIExtClient(apiContext *types.APIContext, storageContext types.StorageContext) (clientset.Interface, error) {
-	return m.ScaledContext.APIExtClient, nil
+func (m *Manager) APIExtClient() clientset.Interface {
+	return m.ScaledContext.APIExtClient
 }
 
 func (m *Manager) UserContext(clusterName string) (*config.UserContext, error) {

@@ -3,21 +3,37 @@ package clusterauthtoken
 import (
 	"context"
 
-	"github.com/rancher/norman/store/crd"
-	clusterSchema "github.com/rancher/types/apis/cluster.cattle.io/v3/schema"
-	client "github.com/rancher/types/client/cluster/v3"
+	v3 "github.com/rancher/types/apis/cluster.cattle.io/v3"
 	"github.com/rancher/types/config"
+	"github.com/rancher/wrangler/pkg/crd"
+	"k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 )
 
 func CRDSetup(ctx context.Context, apiContext *config.UserOnlyContext) error {
-	factory, err := crd.NewFactoryFromClient(apiContext.RESTConfig)
+	crds := []crd.CRD{
+		crd.CRD{
+			GVK: v3.ClusterAuthTokenGroupVersionKind,
+		}.WithSchemaFromStruct(v3.ClusterAuthToken{}).
+			WithColumn("Username", ".userName").
+			WithCustomColumn(v1beta1.CustomResourceColumnDefinition{
+				Name:     "Expires",
+				Type:     "date",
+				JSONPath: ".expiresAt",
+			}).
+			WithColumn("LastRefresh", ".lastRefresh").
+			WithColumn("Enabled", ".enabled"),
+		crd.CRD{
+			GVK: v3.ClusterUserAttributeGroupVersionKind,
+		}.WithSchemaFromStruct(v3.ClusterUserAttribute{}).
+			WithColumn("Groups", ".groups").
+			WithColumn("LastRefresh", ".lastRefresh").
+			WithColumn("Enabled", ".enabled"),
+	}
+
+	f, err := crd.NewFactoryFromClient(&apiContext.RESTConfig)
 	if err != nil {
 		return err
 	}
-	factory.BatchCreateCRDs(ctx, config.UserStorageContext, apiContext.Schemas, &clusterSchema.Version,
-		client.ClusterAuthTokenType,
-		client.ClusterUserAttributeType,
-	)
-	factory.BatchWait()
-	return nil
+	_, err = f.CreateCRDs(ctx, crds...)
+	return err
 }

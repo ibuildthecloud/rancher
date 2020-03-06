@@ -3,9 +3,6 @@ package user
 import (
 	"context"
 
-	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
-	"github.com/rancher/norman/store/crd"
-	"github.com/rancher/norman/types"
 	"github.com/rancher/rancher/pkg/controllers/management/compose/common"
 	"github.com/rancher/rancher/pkg/controllers/user/alert"
 	"github.com/rancher/rancher/pkg/controllers/user/approuter"
@@ -32,16 +29,12 @@ import (
 	"github.com/rancher/rancher/pkg/controllers/user/rbac/podsecuritypolicy"
 	"github.com/rancher/rancher/pkg/controllers/user/resourcequota"
 	"github.com/rancher/rancher/pkg/controllers/user/secret"
-	"github.com/rancher/rancher/pkg/controllers/user/servicemonitor"
 	"github.com/rancher/rancher/pkg/controllers/user/systemimage"
 	"github.com/rancher/rancher/pkg/controllers/user/targetworkloadservice"
 	"github.com/rancher/rancher/pkg/controllers/user/windows"
 	"github.com/rancher/rancher/pkg/controllers/user/workload"
-	pkgmonitoring "github.com/rancher/rancher/pkg/monitoring"
 	managementv3 "github.com/rancher/types/apis/management.cattle.io/v3"
-	projectclient "github.com/rancher/types/client/project/v3"
 	"github.com/rancher/types/config"
-	"github.com/rancher/types/factory"
 )
 
 func Register(ctx context.Context, cluster *config.UserContext, clusterRec *managementv3.Cluster, kubeConfigGetter common.KubeConfigGetter) error {
@@ -116,36 +109,37 @@ func RegisterUserOnly(ctx context.Context, cluster *config.UserOnlyContext) erro
 	nslabels.Register(ctx, cluster)
 	targetworkloadservice.Register(ctx, cluster)
 	workload.Register(ctx, cluster)
-	servicemonitor.Register(ctx, cluster)
-	monitoring.RegisterAgent(ctx, cluster)
+	//servicemonitor.Register(ctx, cluster)
+	//monitoring.RegisterAgent(ctx, cluster)
 
 	return nil
 }
 
 func createUserClusterCRDs(ctx context.Context, c *config.UserOnlyContext) error {
-	overrided := struct {
-		types.Namespaced
-	}{}
+	//overrided := struct {
+	//	types.Namespaced
+	//}{}
+	//
+	//schemas := factory.Schemas(&pkgmonitoring.APIVersion).
+	//	MustImport(&pkgmonitoring.APIVersion, monitoringv1.Prometheus{}, overrided).
+	//	MustImport(&pkgmonitoring.APIVersion, monitoringv1.PrometheusRule{}, overrided).
+	//	MustImport(&pkgmonitoring.APIVersion, monitoringv1.ServiceMonitor{}, overrided).
+	//	MustImport(&pkgmonitoring.APIVersion, monitoringv1.Alertmanager{}, overrided)
+	//
+	//f, err := crd.NewFactoryFromClient(c.RESTConfig)
+	//if err != nil {
+	//	return err
+	//}
+	//
+	//_, err = f.CreateCRDs(ctx, config.UserStorageContext,
+	//	schemas.Schema(&pkgmonitoring.APIVersion, projectclient.PrometheusType),
+	//	schemas.Schema(&pkgmonitoring.APIVersion, projectclient.PrometheusRuleType),
+	//	schemas.Schema(&pkgmonitoring.APIVersion, projectclient.AlertmanagerType),
+	//	schemas.Schema(&pkgmonitoring.APIVersion, projectclient.ServiceMonitorType),
+	//)
+	//
+	//f.BatchWait()
 
-	schemas := factory.Schemas(&pkgmonitoring.APIVersion).
-		MustImport(&pkgmonitoring.APIVersion, monitoringv1.Prometheus{}, overrided).
-		MustImport(&pkgmonitoring.APIVersion, monitoringv1.PrometheusRule{}, overrided).
-		MustImport(&pkgmonitoring.APIVersion, monitoringv1.ServiceMonitor{}, overrided).
-		MustImport(&pkgmonitoring.APIVersion, monitoringv1.Alertmanager{}, overrided)
-
-	f, err := crd.NewFactoryFromClient(c.RESTConfig)
-	if err != nil {
-		return err
-	}
-
-	_, err = f.CreateCRDs(ctx, config.UserStorageContext,
-		schemas.Schema(&pkgmonitoring.APIVersion, projectclient.PrometheusType),
-		schemas.Schema(&pkgmonitoring.APIVersion, projectclient.PrometheusRuleType),
-		schemas.Schema(&pkgmonitoring.APIVersion, projectclient.AlertmanagerType),
-		schemas.Schema(&pkgmonitoring.APIVersion, projectclient.ServiceMonitorType),
-	)
-
-	f.BatchWait()
-
-	return err
+	//return err
+	return nil
 }

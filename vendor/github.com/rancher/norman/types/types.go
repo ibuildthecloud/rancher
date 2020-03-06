@@ -1,5 +1,7 @@
 package types
 
+import "reflect"
+
 const (
 	ResourceFieldID = "id"
 )
@@ -115,6 +117,7 @@ type Schema struct {
 	DynamicSchemaVersion string            `json:"dynamicSchemaVersion,omitempty"`
 	Scope                TypeScope         `json:"-"`
 	Enabled              func() bool       `json:"-"`
+	ReflectType          reflect.Type      `json:"-"`
 
 	InternalSchema      *Schema             `json:"-"`
 	Mapper              Mapper              `json:"-"`
