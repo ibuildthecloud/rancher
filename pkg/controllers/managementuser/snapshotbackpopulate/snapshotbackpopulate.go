@@ -3,20 +3,25 @@ package snapshotbackpopulate
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"sort"
 
+	"github.com/rancher/lasso/pkg/cache"
+	"github.com/rancher/lasso/pkg/client"
+	"github.com/rancher/lasso/pkg/controller"
 	rkev1 "github.com/rancher/rancher/pkg/apis/rke.cattle.io/v1"
 	cluster2 "github.com/rancher/rancher/pkg/controllers/provisioningv2/cluster"
 	provisioningcontrollers "github.com/rancher/rancher/pkg/generated/controllers/provisioning.cattle.io/v1"
 	"github.com/rancher/rancher/pkg/types/config"
+	corecontrollers "github.com/rancher/wrangler/pkg/generated/controllers/core/v1"
+	"github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 )
 
 var (
-	snapshotNames = map[string]bool{
+	configMapNames = map[string]bool{
 		"k3s-etcd-snapshots":  true,
 		"rke2-etcd-snapshots": true,
 	}
@@ -28,21 +33,45 @@ type handler struct {
 	clusters     provisioningcontrollers.ClusterClient
 }
 
-func Register(ctx context.Context, userContext *config.UserContext) {
+func Register(ctx context.Context, userContext *config.UserContext) error {
 	h := handler{
 		clusterName:  userContext.ClusterName,
 		clusterCache: userContext.Management.Wrangler.Provisioning.Cluster().Cache(),
 		clusters:     userContext.Management.Wrangler.Provisioning.Cluster(),
 	}
-	userContext.Core.ConfigMaps("kube-system").AddHandler(ctx, "snapshotbackpopulate", h.OnChange)
+
+	// We want to watch two specific objects, not all config maps.  So we setup a custom controller
+	// to just watch those names.
+	clientFactory, err := client.NewSharedClientFactory(&userContext.RESTConfig, nil)
+	if err != nil {
+		return err
+	}
+
+	for configMapName := range configMapNames {
+		cacheFactory := cache.NewSharedCachedFactory(clientFactory, &cache.SharedCacheFactoryOptions{
+			DefaultNamespace: "kube-system",
+			DefaultTweakList: func(options *metav1.ListOptions) {
+				options.FieldSelector = fmt.Sprintf("metadata.name=%s", configMapName)
+			},
+		})
+		controllerFactory := controller.NewSharedControllerFactory(cacheFactory, nil)
+
+		controller := corecontrollers.New(controllerFactory)
+		controller.ConfigMap().OnChange(ctx, "snapshotbackpopulate", h.OnChange)
+		if err := controllerFactory.Start(ctx, 1); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
-func (h *handler) OnChange(key string, configMap *corev1.ConfigMap) (runtime.Object, error) {
+func (h *handler) OnChange(key string, configMap *corev1.ConfigMap) (*corev1.ConfigMap, error) {
 	if configMap == nil {
 		return nil, nil
 	}
 
-	if configMap.Namespace != "kube-system" || !snapshotNames[configMap.Name] {
+	if configMap.Namespace != "kube-system" || !configMapNames[configMap.Name] {
 		return configMap, nil
 	}
 
@@ -51,7 +80,7 @@ func (h *handler) OnChange(key string, configMap *corev1.ConfigMap) (runtime.Obj
 		return configMap, err
 	}
 
-	fromConfigMap, err := configMapToSnapshots(configMap)
+	fromConfigMap, err := h.configMapToSnapshots(configMap)
 	if err != nil {
 		return configMap, err
 	}
@@ -66,11 +95,12 @@ func (h *handler) OnChange(key string, configMap *corev1.ConfigMap) (runtime.Obj
 	return configMap, nil
 }
 
-func configMapToSnapshots(configMap *corev1.ConfigMap) (result []rkev1.ETCDSnapshot, _ error) {
-	for _, v := range configMap.Data {
+func (h *handler) configMapToSnapshots(configMap *corev1.ConfigMap) (result []rkev1.ETCDSnapshot, _ error) {
+	for k, v := range configMap.Data {
 		file := &snapshotFile{}
 		if err := json.Unmarshal([]byte(v), file); err != nil {
-			return nil, err
+			logrus.Errorf("invalid non-json value in %s/%s for key %s in cluster %s", configMap.Namespace, configMap.Name, k, h.clusterName)
+			return nil, nil
 		}
 		snapshot := rkev1.ETCDSnapshot{
 			Name:      file.Name,
